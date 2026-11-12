@@ -1,0 +1,38 @@
+# Single source of truth for a simulator run and (later) a controller deployment.
+# Values mirror the HedgedService CRD described in docs/02-architecture.md.
+
+slo:
+  p95LatencyMs: 150          # frozen before testing; see README decision 1
+  minAvailability: 0.999
+  windowSeconds: 60
+
+capacity:
+  podCpuRequestMilli: 500
+  systemOverheadVcpu: 0.3    # allocatable = node vcpu - overhead
+  maxPodsPerNode: 16
+
+policy:
+  tickSeconds: 60
+  horizonSeconds: 1800       # forecast horizon
+  headroomH: 0.15
+  lossFractionQ: 0.3333      # assumed simultaneous spot loss
+  onDemandFloorVcpu: 8
+  diversityBeta: 0.65        # max share of spot capacity in one pool
+  drainHeadroomVcpu: 8       # largest node we are willing to lose
+  leadTimeSeconds: 90
+  churnPenaltyPerNode: 0.02
+  maxSpotShare: 0.85
+  maxNodes: 40
+
+price:
+  onDemandUsdPerVcpuHour: 0.04
+  spotDiscount: 0.65
+  volatile: false
+
+workload:
+  demandCsv: experiments/traces/demand_30d.csv
+  seed: 7
+
+experiment:
+  horizonDays: 30
+  tickSeconds: 60
