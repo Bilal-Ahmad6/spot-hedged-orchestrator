@@ -4,14 +4,24 @@ __pycache__/
 .venv/
 venv/
 *.egg-info/
+build/
+dist/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+.coverage
+htmlcov/
 
-# Experiment artifacts (keep configs, ignore bulk runs)
+# Experiment artifacts (keep configs and derived traces, ignore bulk runs)
 experiments/runs/
-experiments/traces/*.csv
+experiments/traces/raw/
+experiments/traces/*.rar
+experiments/traces/*.zip
 !experiments/traces/.gitkeep
+
+# Local toolchain (kind, kwokctl, helm, k6 binaries)
+tools/
+.tmp/
 
 # Local cluster state
 .kube/
