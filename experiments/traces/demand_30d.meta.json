@@ -1,0 +1,35 @@
+{
+  "out": "experiments\\traces\\demand_30d.csv",
+  "sha256": "6a93a6791d3bc9d276a2b7525a8ac3f715f8c92bcf1c023ab991386569ea5ad8",
+  "rows": 43200,
+  "days": 30,
+  "start": "2026-01-05T00:00:00Z",
+  "envelope": {
+    "min": 40.0,
+    "max": 160.0,
+    "target_mean": 70.0
+  },
+  "observed": {
+    "min": 40.00000056672886,
+    "mean": 70.00000000000001,
+    "p95": 142.87677794453208,
+    "max": 159.99583319704064
+  },
+  "rank_transform": {
+    "gamma": 3.000132856684208,
+    "formula": "D = min + (max - min) * empirical_cdf ^ gamma"
+  },
+  "provenance": {
+    "kind": "azure-functions-invocation-trace",
+    "path": "experiments\\traces\\raw\\extracted\\AzureFunctionsInvocationTraceForTwoWeeksJan2021.txt",
+    "sha256": "d56368ef194baa8d418304bd2f87cca67668ced0d117bd89ad4ef3cf836457d2"
+  },
+  "service_time": {
+    "count_sampled": 1809618,
+    "mean_s": 3.6649239104606606,
+    "p50_s": 0.046,
+    "p90_s": 2.297,
+    "p95_s": 19.206,
+    "p99_s": 77.62866000000015
+  }
+}
