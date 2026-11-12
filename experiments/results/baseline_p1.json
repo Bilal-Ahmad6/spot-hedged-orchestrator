@@ -1,0 +1,53 @@
+{
+  "policy": "P1-ondemand-hpa",
+  "cost_usd": 2630.474666672146,
+  "cost_by_pool": {
+    "on-demand": 2630.474666672146,
+    "spot-a": 0.0,
+    "spot-b": 0.0
+  },
+  "node_hours": 8220.233333333334,
+  "availability": 0.9974546037540054,
+  "total_requests": 3628799930.2798843,
+  "failed_requests": 9236733.72000001,
+  "violation_seconds": 73440.0,
+  "p95_mean_ms": 316.3566297534735,
+  "p95_p95_ms": 54.95042184840953,
+  "p95_max_ms": 10000.0,
+  "lost_in_flight": 0.0,
+  "node_launches": 2735,
+  "node_drains": 2724,
+  "interruption_count": 0,
+  "mean_capacity_vcpu": 87.26167592592593,
+  "peak_capacity_vcpu": 184.8,
+  "mean_demand_vcpu": 69.9999986550926,
+  "recovery_seconds": [],
+  "wall_seconds": 6.812,
+  "ticks": 43200,
+  "demand": {
+    "path": "experiments\\traces\\demand_30d.csv",
+    "sha256": "7eb8f5f2ff455bcbe840af462fe170741bbef3551c893c48a2a4a89f94425148",
+    "rows": 43200,
+    "mean": 69.9999986550926,
+    "max": 159.9958
+  },
+  "interruptions": {
+    "model": "independent",
+    "hazard_per_node_hour": 0.04,
+    "correlated_prob_per_hour": 0.02,
+    "correlated_q": 0.3333,
+    "peak_only": false,
+    "peak_threshold_vcpu": 130.0,
+    "abrupt_fraction": 0.0,
+    "notice_seconds": 120
+  },
+  "price": {
+    "on_demand_usd_per_vcpu_hour": 0.04,
+    "spot_discount": 0.65,
+    "volatile": false
+  },
+  "config": {
+    "path": "configs\\base.yaml",
+    "sha256": "bee2d949e29e7946c4f037241236812818aba004420f400561ec7f96066267c4"
+  }
+}
