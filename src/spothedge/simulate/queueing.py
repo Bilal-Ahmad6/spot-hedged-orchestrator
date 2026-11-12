@@ -50,7 +50,7 @@ def erlang_c(servers: int, offered_load: float) -> float:
     if offered_load >= servers:
         return 1.0
 
-    erlang_b = 0.0
+    erlang_b = 1.0
     for k in range(1, servers + 1):
         erlang_b = (offered_load * erlang_b) / (k + offered_load * erlang_b)
     rho = offered_load / servers

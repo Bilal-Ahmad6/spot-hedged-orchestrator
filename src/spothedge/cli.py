@@ -113,6 +113,7 @@ def cmd_trace(args: argparse.Namespace) -> int:
         days=args.days,
         min_vcpu=args.min_vcpu,
         max_vcpu=args.max_vcpu,
+        smooth_minutes=args.smooth_minutes,
     )
     print(json.dumps(summary, indent=2))
     return 0
@@ -123,7 +124,18 @@ def cmd_sim(args: argparse.Namespace) -> int:
 
     if args.action != "run":
         raise SystemExit("unknown sim action")
-    summary = run_from_config(Path(args.config), out_dir=Path(args.out))
+    summary = run_from_config(
+        Path(args.config),
+        out_dir=Path(args.out),
+        policy=args.policy,
+        interruption_model=args.interruption,
+        q=args.q,
+        notice_seconds=args.notice,
+        abrupt_fraction=args.abrupt,
+        seed=args.seed,
+        days=args.days,
+        record_every=args.record_every,
+    )
     print(json.dumps(summary, indent=2))
     return 0
 
@@ -168,12 +180,29 @@ def build_parser() -> argparse.ArgumentParser:
     trace.add_argument("--days", type=int, default=30)
     trace.add_argument("--min-vcpu", type=float, default=40.0)
     trace.add_argument("--max-vcpu", type=float, default=160.0)
+    trace.add_argument("--smooth-minutes", type=int, default=15)
     trace.set_defaults(func=cmd_trace)
 
     sim = sub.add_parser("sim", help="discrete-event simulator")
     sim.add_argument("action", choices=["run"])
     sim.add_argument("--config", default="configs/base.yaml")
     sim.add_argument("--out", default="experiments/runs/smoke")
+    sim.add_argument("--policy", default="p0", help="p0 | p1 | p2 | p3")
+    sim.add_argument(
+        "--interruption",
+        default="independent",
+        choices=["independent", "correlated", "peak", "none"],
+    )
+    sim.add_argument("--q", type=float, default=None, help="simultaneous spot loss fraction")
+    sim.add_argument("--notice", type=int, default=None, help="notice window in seconds")
+    sim.add_argument(
+        "--abrupt", type=float, default=0.0, help="fraction of reclaims with 0s notice"
+    )
+    sim.add_argument("--seed", type=int, default=None)
+    sim.add_argument("--days", type=int, default=None)
+    sim.add_argument(
+        "--record-every", type=int, default=0, help="write one decision record every N ticks"
+    )
     sim.set_defaults(func=cmd_sim)
 
     verify = sub.add_parser("verify", help="re-run fixed cells and diff results")

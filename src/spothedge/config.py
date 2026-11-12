@@ -56,6 +56,8 @@ class PolicyConfig:
     diversity_beta: float = 0.65
     drain_headroom_vcpu: float = 8.0
     lead_time_seconds: int = 90
+    drain_seconds: int = 20
+    notice_seconds: int = 120
     churn_penalty_per_node: float = 0.02
     max_spot_share: float = 0.85
     max_nodes: int = 40
@@ -75,6 +77,10 @@ class PolicyConfig:
             raise ValueError("max spot share must be in (0, 1]")
         if self.lead_time_seconds < 0:
             raise ValueError("lead time cannot be negative")
+        if self.drain_seconds < 0:
+            raise ValueError("drain time cannot be negative")
+        if self.notice_seconds < 0:
+            raise ValueError("notice window cannot be negative")
         if self.max_nodes <= 0:
             raise ValueError("max nodes must be positive")
 
@@ -96,6 +102,17 @@ class PriceConfig:
 class WorkloadConfig:
     demand_csv: str = "experiments/traces/demand_30d.csv"
     seed: int = 7
+    service_time_s: float = 0.046
+    service_cv: float = 1.2
+    requests_per_vcpu_second: float = 20.0
+
+    def __post_init__(self) -> None:
+        if self.service_time_s <= 0:
+            raise ValueError("service time must be positive")
+        if self.service_cv <= 0:
+            raise ValueError("service cv must be positive")
+        if self.requests_per_vcpu_second <= 0:
+            raise ValueError("request rate must be positive")
 
 
 @dataclass(frozen=True, slots=True)

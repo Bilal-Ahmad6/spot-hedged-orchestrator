@@ -20,6 +20,8 @@ policy:
   diversityBeta: 0.65        # max share of spot capacity in one pool
   drainHeadroomVcpu: 8       # largest node we are willing to lose
   leadTimeSeconds: 90
+  drainSeconds: 20
+  noticeSeconds: 120
   churnPenaltyPerNode: 0.02
   maxSpotShare: 0.85
   maxNodes: 40
@@ -32,6 +34,9 @@ price:
 workload:
   demandCsv: experiments/traces/demand_30d.csv
   seed: 7
+  serviceTimeS: 0.046      # median from the Azure trace
+  serviceCv: 1.2
+  requestsPerVcpuSecond: 20.0
 
 experiment:
   horizonDays: 30
