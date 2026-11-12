@@ -1,6 +1,6 @@
 {
   "out": "experiments\\traces\\demand_30d.csv",
-  "sha256": "6a93a6791d3bc9d276a2b7525a8ac3f715f8c92bcf1c023ab991386569ea5ad8",
+  "sha256": "7eb8f5f2ff455bcbe840af462fe170741bbef3551c893c48a2a4a89f94425148",
   "rows": 43200,
   "days": 30,
   "start": "2026-01-05T00:00:00Z",
@@ -10,14 +10,18 @@
     "target_mean": 70.0
   },
   "observed": {
-    "min": 40.00000056672886,
-    "mean": 70.00000000000001,
-    "p95": 142.87677794453208,
-    "max": 159.99583319704064
+    "min": 40.00000000002321,
+    "mean": 70.0,
+    "p95": 142.887784962242,
+    "max": 159.99583312477978
   },
   "rank_transform": {
-    "gamma": 3.000132856684208,
+    "gamma": 3.0001848860211444,
     "formula": "D = min + (max - min) * empirical_cdf ^ gamma"
+  },
+  "smoothing": {
+    "window_minutes": 15,
+    "method": "centred rolling mean"
   },
   "provenance": {
     "kind": "azure-functions-invocation-trace",

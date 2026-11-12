@@ -128,6 +128,7 @@ def build_trace(
     max_vcpu: float,
     target_mean_vcpu: float = 70.0,
     start: str = "2026-01-05T00:00:00Z",
+    smooth_minutes: int = 15,
 ) -> dict:
     """Build the 30-day demand CSV and its metadata sidecar."""
 
@@ -139,6 +140,14 @@ def build_trace(
         invocations = synthetic_invocations(days=14, seed=seed)
         durations = np.array([], dtype=float)
         provenance = {"kind": "synthetic-fallback", "seed": seed}
+
+    # A capacity controller observes a rate over its metrics window, not a single
+    # minute's invocation count. Smoothing removes sampling noise while leaving
+    # the diurnal and weekly structure intact.
+    if smooth_minutes > 1:
+        invocations = invocations.rolling(
+            window=smooth_minutes, min_periods=1, center=True
+        ).mean()
 
     tiled = _tile_to_days(invocations, days)
     percentiles = pd.Series(tiled).rank(pct=True, method="average").to_numpy(dtype=float)
@@ -189,6 +198,7 @@ def build_trace(
             "gamma": gamma,
             "formula": "D = min + (max - min) * empirical_cdf ^ gamma",
         },
+        "smoothing": {"window_minutes": smooth_minutes, "method": "centred rolling mean"},
         "provenance": provenance,
         "service_time": duration_stats,
     }
