@@ -11,8 +11,8 @@ Scope ladder target: **Tier 3** (see [docs/04-timeline.md](04-timeline.md#3-scop
 |---|---|---|---|---|
 | M0 Foundations | repo, CI, env, definitions, trace, prices | **done** | **G0 ✅** | 28 tests, ruff clean, trace + anchors |
 | M1 Data + simulator | lifecycle, ledger, queueing, interruptions | **done** | **G1 ✅** | golden cost tests; 30-day baseline runs |
-| M2 Policy + G2 | forecast, hedged allocation, reclaim-aware provisioning | **in progress** | G2 | 20-seed comparison running |
-| M3 Controller + cluster | CRD, kopf, KWOK, reclaim | not started | G3 | — |
+| M2 Policy + G2 | forecast, hedged allocation, reclaim-aware provisioning | **done** | **G2 ✅** | 20-seed paired comparison: **−26.15 %** cost, **+0.023 pp** availability |
+| M3 Controller + cluster | CRD, kopf, KWOK, reclaim | **in progress** | G3 | controller runtime + KWOK actuator working; 3 reclaims handled; fail-static passed |
 | M4 Data plane | kind, k6, drain, OpenCost | not started | G4 | — |
 | M5 Matrix | 2,800 runs, ablation, figures | not started | G5 | — |
 | M6 Report + demo | report, runbook, viva | not started | G6 | — |
@@ -44,7 +44,11 @@ P3's churn (11.5 k launches) is its weakest number; it is reported rather than h
 
 Newest first.
 
-- **2026-11-12** — **M2 policy implemented.** Seasonal-naive forecaster with EWMA residual correction and a P90 quantile; closed-form hedged allocation with survival, floor, diversity and share constraints; reclaim-aware pre-spin (the engine now holds a noticed node until spare capacity exists, so a policy that provisions for the deficit drains safely). Differential test against the MILP reference: mean **1.14×**, worst **1.24×** of the optimum. 20-seed G2 comparison running.
+- **2026-11-12** — **G2 passed.** 20 paired seeds at a 65 % discount: P3 costs **$1,942.69 ± 0.26** versus P1's **$2,630.47**, a **26.15 % ± 0.01 pp** reduction, with availability **99.978 % ± 0.0006 pp** versus P1's 99.745 %. Evidence: `experiments/results/g2_comparison.json`.
+- **2026-11-12** — **M3 controller works against the real API server.** KWOK cluster (v1.36.1 control plane, 16 CPUs), `HedgedService` CRD, `KwokNodeActuator` creating nodes with correct allocatable capacity. Three injected reclaims were each replaced before the drain; logged capacity stayed at 66.6 vCPU. Fail-static: 21 nodes unchanged after 45 s with the controller killed. Evidence: `experiments/results/controller_demo.log`, `controller_decisions.jsonl`, `decision_sample.jsonl`.
+- **2026-11-12** — **Actuator bugs found and fixed in the cluster** (both invisible in simulation): terminating nodes were counted as capacity, and a surplus that was already draining was drained again. The second caused capacity to collapse to zero. This is why T2 exists.
+- **2026-11-12** — **kopf timer does not fire against this CRD** on Windows; the shared `ControllerRuntime` is therefore driven by `scripts/run_controller.py` for the demo. The kopf operator remains the deployment path and needs a review when the cluster tier is completed.
+- **2026-11-12** — **M2 policy implemented.** Seasonal-naive forecaster (EWMA + P90), closed-form survival allocation, reclaim pre-spin, shape stability. Differential test vs MILP: mean **1.14×**, worst **1.24×** of the optimum. 45 tests passing.
 - **2026-11-12** — **Shape-stability finding.** Re-optimising instance shapes every tick produced **180,000 node launches and 93 % availability** (capacity emptied for the 90 s lead time). Holding one shape per run gives 11,500 launches and 99.98 %. Shape stability is now a documented correctness requirement (ADR-0002).
 - **2026-11-12** — **PuLP pinned below 4.0.** v4 removes the bundled CBC solver and the classic `LpVariable` API; `listSolvers(onlyAvailable=True)` is empty on a clean install and the solver-plugin build hung on Windows.
 - **2026-11-12** — **M1 complete.** Time-stepped engine, cost ledger, Erlang-C/Allen-Cunneen SLO model, interruption models I1–I4. Golden tests: **$4,672.00** continuous, **$5,139.20** discrete. 30-day run ≈ 6 s (19 s with the hedged policy). — commit: `975a769`.
@@ -77,7 +81,9 @@ Newest first.
 | MILP agreement | `pytest tests/test_milp_agreement.py` | mean 1.14×, worst 1.24× of optimum |
 | 30-day runtime | `spothedge sim run` | ≈ 6 s (P0), ≈ 19 s (P3) |
 | CI | GitHub Actions `ci` | pending this push |
-| G2 | 20-seed P1 vs P3 at 65 % | running; smoke run: **20.3 % cheaper** |
+| G2 | 20 paired seeds, P1 vs P3 at 65 % | **PASSED**: −26.15 % ± 0.01 pp cost, +0.023 pp availability |
+| Controller vs API | 21 nodes, 3 reclaims | node replaced before drain; capacity constant at 66.6 vCPU |
+| Fail-static | kill controller, 45 s | 21 nodes before and after: **PASSED** |
 
 ## Deviations
 
@@ -96,6 +102,10 @@ Newest first.
 - **Violation minutes** count a minute when p95 exceeds 150 ms **or** per-minute
   availability falls below 99.9 %. The earlier definition (any failed request)
   over-counted one-request dips.
+- **T2 demo runs the shared runtime directly** (`scripts/run_controller.py`) rather
+  than through kopf, whose timer does not fire against the CRD on this Windows
+  build. The kopf operator is still the deployment path; this is a test-harness
+  substitution, not a change to the policy.
 
 ## Asks
 
