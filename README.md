@@ -4,7 +4,8 @@ Implementation workspace for **SE-315 Cloud Computing — Track A, Assignment 1:
 
 Team: Amina Nauman (505389), Bilal Ahmad (501603), Mahnoor Amjad (503202), Rabia Ashfaq (501656).
 
-This folder currently contains the **research + build plan** produced before writing production code:
+This folder contains the research, the plan, and the working implementation. Live status:
+**[docs/PROGRESS.md](docs/PROGRESS.md)** (updated with the work, not separately).
 
 | Doc | What it is |
 |---|---|
@@ -31,6 +32,27 @@ This folder currently contains the **research + build plan** produced before wri
 The simulator produces the headline numbers; the cluster proves they are not fiction; the live run (optional) proves the provider path.
 
 **The single most important research finding.** The proposal's cost model is continuous in vCPU (30 on-demand + 48 spot = $1,366.56/mo). Real nodes are discrete, need ~0.3 vCPU of system overhead, and need one spare node's worth of headroom per pool so that draining does not itself cause an SLO violation. Re-running the same arithmetic with 8-vCPU nodes adds roughly 10–25%. That does **not** invalidate the 30% objective, but it means we must pre-register the discrete-node result and the discount level at which 30% is reachable — otherwise the final report will look like a failure when it is actually the honest answer. See [docs/01](docs/01-research-digest.md#5-what-this-changes-in-our-design) §5.3.
+
+## Running it
+
+```bash
+python -m venv .venv
+.venv/Scripts/python -m pip install -e ".[dev,k8s]"   # Windows; use .venv/bin on Unix
+python -m spothedge doctor                            # environment + config check
+
+python -m spothedge sim run --policy p3 --out experiments/runs/demo
+python -m spothedge sim compare --policies p1,p3 --seeds 20 --discount 0.65 \
+    --out experiments/runs/g2
+```
+
+Cluster tier (Docker required):
+
+```bash
+kwokctl create cluster --name spot --enable-metrics-server \
+    --config deploy/kwok/metrics-usage.yaml
+python scripts/run_controller.py --time-scale 6 --interval 5
+python scripts/inject_reclaim.py --pool spot-a --notice 60
+```
 
 ## Decisions needed from the team (blocking)
 
