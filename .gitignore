@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Experiment artifacts (keep configs, ignore bulk runs)
+experiments/runs/
+experiments/traces/*.csv
+!experiments/traces/.gitkeep
+
+# Local cluster state
+.kube/
+*.kubeconfig
+deploy/**/charts/*.tgz
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
