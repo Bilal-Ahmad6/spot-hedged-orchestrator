@@ -26,7 +26,7 @@ All policies share: trace, seeds, node catalogue, price table, `h`, `leadTime`, 
 | Policy | Rule | Why it is the right comparator |
 |---|---|---|
 | **P0 — Static peak** | 160 vCPU on-demand, always on | The "do nothing clever" reference from the proposal's Table 4 |
-| **P1 — On-demand HPA + CA** | Single Deployment; HPA target 70% CPU, 15 s sync, 300 s down-stabilisation; node autoscaler adds/removes on-demand nodes at `leadTime` | The state of practice, and the baseline objective 1 names |
+| **P1 — On-demand HPA + CA** | Single Deployment; HPA target **1/1.15 ≈ 87 %** so every baseline provisions the same 15 % headroom (the usual 70 % target is a sensitivity case); 15 s sync, 10 % tolerance, 300 s scale-down stabilisation; node autoscaler adds/removes on-demand nodes at `leadTime` | The state of practice, and the baseline objective 1 names |
 | **P2 — Fixed spot ratio** | 70/30 spot/on-demand split held constant, replicas follow demand | Tests whether *any* spot use is enough; the proposal's "fixed-spot-ratio baseline" |
 | **P3 — Hedged (ours)** | MILP each tick with survival, floor, diversity, lead-time and drain constraints | The contribution |
 | **P4 — Oracle (upper bound)** | Perfect foresight of demand and interruptions, same constraints | Separates "policy is bad" from "forecasting is hard"; never presented as achievable |
@@ -85,7 +85,7 @@ The `q = 1` case is mandatory: it is the proposal's own stress test and must pro
 |---|---|---|
 | Monthly cost | Σ node-seconds × price / 30 days × 730 h | Cost ledger (T1/T2), OpenCost cross-check (T3) |
 | Availability | `1 − failed/total` requests; a failed request is a non-2xx/3xx, a timeout, or a connection reset | k6 (T3), analytic (T1) |
-| SLO violation minutes | Minutes where the 1-min p95 exceeds 150 ms, plus minutes with zero capacity | Prometheus / model |
+| SLO violation minutes | Minutes where the 1-min p95 exceeds 150 ms **or** per-minute availability falls below 99.9 % | Prometheus / model |
 | Lost in-flight requests | Requests that were open when a pod died without completing | k6 `http_req_failed` during drain windows + request counter deltas |
 | Recovery time | Interrupt signal → capacity ≥ plan (or success rate back to baseline), seconds | Event log |
 | Reclaim response time | Notice → last pod on node terminated, seconds | Event log |
@@ -100,7 +100,9 @@ Averaging rules: report **mean and 95% CI across 20 seeds**, plus the **worst se
 
 ## 7. Run matrix
 
-**Primary (answers H1/H3/H4)** — `4 policies × 3 interruption models (I1,I2,I3) × 5 discounts × 20 seeds = 1,200 runs` at `q = 1/3`, `h = 0.15`, notice = 120 s, 30 days.
+**Primary (answers H1/H3/H4)** — `4 policies × 3 interruption models (I1,I2,I3) × 5 discounts × 20 seeds = 1,200 runs` at `q = 1/6` (the proposal's illustrative loss fraction, and the policy's assumed `q`), `h = 0.15`, notice = 120 s, 30 days. `q = 1/3`, `1/2` and `1` are stress cases that deliberately exceed the policy's assumption.
+
+**Churn and shape stability** — node launches and terminations are reported alongside cost. A policy that re-picks instance shapes every tick can look cheaper while draining and relaunching the cluster; the comparison must show that cost, not hide it.
 
 **Headroom/feasibility (H2)** — `P1, P3 × {0, 8, 16} vCPU drain headroom × {0, 0.15, 0.30} h × 5 discounts × 20 seeds = 900 runs`.
 
