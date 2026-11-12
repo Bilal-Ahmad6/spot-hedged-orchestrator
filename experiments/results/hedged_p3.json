@@ -1,0 +1,70 @@
+{
+  "policy": "P3-hedged",
+  "cost_usd": 1942.1977777500997,
+  "cost_by_pool": {
+    "on-demand": 877.7342222166232,
+    "spot-a": 532.0874222163952,
+    "spot-b": 532.3761333275164
+  },
+  "node_hours": 24494.116666666665,
+  "availability": 0.9997775495327631,
+  "total_requests": 3628799930.2798843,
+  "failed_requests": 807228.2399999994,
+  "violation_seconds": 3540.0,
+  "p95_mean_ms": 59.606028396358035,
+  "p95_p95_ms": 46.000001433682655,
+  "p95_max_ms": 10000.0,
+  "lost_in_flight": 0.0,
+  "node_launches": 11499,
+  "node_drains": 10702,
+  "interruption_count": 761,
+  "mean_capacity_vcpu": 124.56024305555556,
+  "peak_capacity_vcpu": 333.0,
+  "mean_demand_vcpu": 69.9999986550926,
+  "recovery_seconds": [],
+  "wall_seconds": 17.437,
+  "ticks": 43200,
+  "demand": {
+    "path": "experiments\\traces\\demand_30d.csv",
+    "sha256": "7eb8f5f2ff455bcbe840af462fe170741bbef3551c893c48a2a4a89f94425148",
+    "rows": 43200,
+    "mean": 69.9999986550926,
+    "max": 159.9958
+  },
+  "interruptions": {
+    "model": "independent",
+    "hazard_per_node_hour": 0.04,
+    "correlated_prob_per_hour": 0.02,
+    "correlated_q": 0.1667,
+    "peak_only": false,
+    "peak_threshold_vcpu": 130.0,
+    "abrupt_fraction": 0.0,
+    "notice_seconds": 120
+  },
+  "price": {
+    "on_demand_usd_per_vcpu_hour": 0.04,
+    "spot_discount": 0.65,
+    "volatile": false
+  },
+  "policy_config": {
+    "tick_seconds": 60,
+    "horizon_seconds": 1800,
+    "headroom_h": 0.15,
+    "loss_fraction_q": 0.1667,
+    "on_demand_floor_vcpu": 8,
+    "on_demand_floor_fraction": 0.25,
+    "diversity_beta": 0.65,
+    "drain_headroom_vcpu": 8,
+    "lead_time_seconds": 90,
+    "drain_seconds": 20,
+    "notice_seconds": 120,
+    "churn_penalty_per_node": 0.02,
+    "max_spot_share": 0.85,
+    "max_nodes": 120,
+    "shape_vcpu": 4
+  },
+  "config": {
+    "path": "configs\\base.yaml",
+    "sha256": "c3524b94570aa7c5a489b74841008642bdffa59e7c71421bff5068c6beceeac5"
+  }
+}
