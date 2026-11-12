@@ -27,6 +27,7 @@ tools/
 .kube/
 *.kubeconfig
 deploy/**/charts/*.tgz
+deploy/kwok/*.log
 
 # OS / editor
 .DS_Store

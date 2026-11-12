@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: spothedge-controller
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: spothedge-controller
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch", "create", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+  - apiGroups: ["spothedge.io"]
+    resources: ["hedgedservices", "hedgedservices/status"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: spothedge-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: spothedge-controller
+subjects:
+  - kind: ServiceAccount
+    name: spothedge-controller
+    namespace: kube-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spothedge-controller
+  namespace: kube-system
+  labels:
+    app: spothedge-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spothedge-controller
+  template:
+    metadata:
+      labels:
+        app: spothedge-controller
+    spec:
+      serviceAccountName: spothedge-controller
+      containers:
+        - name: controller
+          image: ghcr.io/bilal-ahmad6/spothedge:dev
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SPOTHEDGE_CONFIG
+              value: /etc/spothedge/base.yaml
+            - name: SPOTHEDGE_TRACE
+              value: /etc/spothedge/demand_30d.csv
+            - name: SPOTHEDGE_POLICY
+              value: p3
+            - name: SPOTHEDGE_TIME_SCALE
+              value: "6"
+            - name: SPOTHEDGE_TICK_SECONDS
+              value: "60"
+            - name: SPOTHEDGE_DECISIONS
+              value: /var/log/spothedge/decisions.jsonl
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/spothedge
+            - name: decisions
+              mountPath: /var/log/spothedge
+      volumes:
+        - name: config
+          configMap:
+            name: spothedge-config
+        - name: decisions
+          emptyDir: {}

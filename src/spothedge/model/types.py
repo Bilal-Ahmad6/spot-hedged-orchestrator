@@ -8,7 +8,7 @@ optional live cloud).
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
@@ -196,7 +196,20 @@ class DecisionRecord:
         return now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        """Serialise with the camelCase keys documented in docs/02-architecture.md."""
+
+        return {
+            "schemaVersion": self.schema_version,
+            "decisionId": self.decision_id,
+            "experimentId": self.experiment_id,
+            "tick": self.tick,
+            "inputs": self.inputs,
+            "constraints": self.constraints,
+            "plan": self.plan,
+            "reason": self.reason,
+            "solver": self.solver,
+            "action": self.action,
+        }
 
 
 SCHEMA_VERSION = "1.0"
