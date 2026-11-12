@@ -22,6 +22,7 @@ class DecisionContext:
     config: Config
     catalogue: Mapping[str, InstanceType]
     prices: PriceTable
+    reclaim_deficit_vcpu: float = 0.0
 
     @property
     def capacity_vcpu(self) -> float:

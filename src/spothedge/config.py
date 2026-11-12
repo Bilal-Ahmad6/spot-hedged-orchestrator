@@ -53,6 +53,7 @@ class PolicyConfig:
     headroom_h: float = 0.15
     loss_fraction_q: float = 1.0 / 3.0
     on_demand_floor_vcpu: float = 8.0
+    on_demand_floor_fraction: float = 0.25
     diversity_beta: float = 0.65
     drain_headroom_vcpu: float = 8.0
     lead_time_seconds: int = 90
@@ -60,7 +61,8 @@ class PolicyConfig:
     notice_seconds: int = 120
     churn_penalty_per_node: float = 0.02
     max_spot_share: float = 0.85
-    max_nodes: int = 40
+    max_nodes: int = 120
+    shape_vcpu: int = 4
 
     def __post_init__(self) -> None:
         if self.tick_seconds <= 0:
@@ -69,10 +71,12 @@ class PolicyConfig:
             raise ValueError("horizon must be at least one tick")
         if self.headroom_h < 0:
             raise ValueError("headroom cannot be negative")
+        if not 0 <= self.on_demand_floor_fraction <= 1:
+            raise ValueError("floor fraction must be in [0, 1]")
         if not 0 < self.loss_fraction_q <= 1:
             raise ValueError("q must be in (0, 1]")
-        if not 0 < self.diversity_beta <= 1:
-            raise ValueError("diversity beta must be in (0, 1]")
+        if not 0.5 <= self.diversity_beta <= 1:
+            raise ValueError("diversity beta must be in [0.5, 1]")
         if not 0 < self.max_spot_share <= 1:
             raise ValueError("max spot share must be in (0, 1]")
         if self.lead_time_seconds < 0:

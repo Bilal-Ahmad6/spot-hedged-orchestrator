@@ -1,9 +1,17 @@
 """Time-stepped simulation engine.
 
-One tick = one policy decision + one SLO evaluation + one ledger accrual. Node
-readiness and drain ramps are continuous functions of time, so every quantity in
-the result is derived from timestamps rather than accumulated state that could
-drift.
+One tick = forecast + policy decision + reclaim servicing + SLO evaluation +
+ledger accrual. Node readiness and drain ramps are continuous functions of time,
+so every quantity is derived from timestamps rather than mutated state.
+
+Reclaim handling is deliberately policy-agnostic:
+
+* a **notice** puts the node on a pending list and starts a deadline clock;
+* the node is drained as soon as there is spare capacity, or when the deadline
+  forces it, whichever comes first;
+* a policy that provisions for the pending deficit gets its replacement before
+  the drain; a policy that ignores it drains into a full cluster and loses
+  capacity. That difference is the point of the comparison.
 """
 
 from __future__ import annotations
@@ -15,6 +23,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from spothedge.config import Config
+from spothedge.forecast.seasonal import HistoryView, SeasonalNaiveForecaster
 from spothedge.model.types import DecisionRecord, Interruption, Plan
 from spothedge.policy.base import DecisionContext, Policy
 from spothedge.simulate.interruptions import InterruptionConfig, InterruptionModel
@@ -28,6 +37,13 @@ from spothedge.simulate.queueing import (
 )
 
 P95_STAT_CAP_MS = 10_000.0
+
+
+@dataclass(slots=True)
+class PendingReclaim:
+    node_id: str
+    deadline: float
+    capacity: float
 
 
 @dataclass
@@ -53,8 +69,7 @@ class SimulationResult:
     recovery_seconds: list[float]
 
     def to_dict(self) -> dict:
-        payload = dict(self.__dict__)
-        return payload
+        return dict(self.__dict__)
 
 
 @dataclass
@@ -82,6 +97,10 @@ class Simulation:
             service_cv=self.config.workload.service_cv,
             requests_per_vcpu_second=self.config.workload.requests_per_vcpu_second,
         )
+        self._forecaster = SeasonalNaiveForecaster(
+            horizon_seconds=self.config.policy.horizon_seconds
+        )
+        self._pending: list[PendingReclaim] = []
         self._records: list[dict] = []
         self._pending_recovery: list[tuple[float, float]] = []
         self._recovery_seconds: list[float] = []
@@ -108,14 +127,24 @@ class Simulation:
             return float(self.demand[-1])
         return float(self.demand[minute])
 
-    def _handle_interruption(self, event: Interruption, t: float, capacity_before: float) -> None:
-        node = next((n for n in self._pool.nodes if n.node_id == event.node), None)
-        if node is None or node.is_terminated(t):
+    def _node(self, node_id: str):
+        return next((n for n in self._pool.nodes if n.node_id == node_id), None)
+
+    def _register_interruption(self, event: Interruption, t: float, capacity_before: float) -> None:
+        node = self._node(event.node)
+        if node is None or node.is_terminated(t) or node.drain_started_at is not None:
             return
-        drain_seconds = float(self.config.policy.drain_seconds)
         self._interruptions += 1
+        drain_seconds = float(self.config.policy.drain_seconds)
         if event.notice_seconds >= drain_seconds:
-            self._pool.drain(node, t, drain_seconds)
+            # Give the policy a chance to replace it before the drain.
+            self._pending.append(
+                PendingReclaim(
+                    node_id=node.node_id,
+                    deadline=t + event.notice_seconds,
+                    capacity=node.allocatable_vcpu,
+                )
+            )
         else:
             pods = node.pods_at(t, self.config.pod_cpu_vcpu)
             self._lost += lost_in_flight(
@@ -126,7 +155,46 @@ class Simulation:
                 self._workload,
             )
             self._pool.drain(node, t, 0.0)
-        self._pending_recovery.append((t, capacity_before))
+            self._pending_recovery.append((t, capacity_before))
+
+    def _service_reclaims(self, t: float, demand: float, capacity: float) -> None:
+        if not self._pending:
+            return
+        drain_seconds = float(self.config.policy.drain_seconds)
+        spare = capacity - demand
+        keep: list[PendingReclaim] = []
+
+        for reclaim in sorted(self._pending, key=lambda r: r.deadline):
+            node = self._node(reclaim.node_id)
+            if node is None or node.is_terminated(t) or node.drain_started_at is not None:
+                continue
+            forced = t + drain_seconds >= reclaim.deadline
+            if forced or spare >= reclaim.capacity - 1e-9:
+                self._pool.drain(node, t, drain_seconds)
+                spare -= reclaim.capacity
+                continue
+            if t >= reclaim.deadline:
+                pods = node.pods_at(t, self.config.pod_cpu_vcpu)
+                self._lost += lost_in_flight(
+                    demand,
+                    pods,
+                    capacity,
+                    self.config.pod_cpu_vcpu,
+                    self._workload,
+                )
+                self._pool.drain(node, t, 0.0)
+                continue
+            keep.append(reclaim)
+
+        self._pending = keep
+
+    def _reclaim_deficit(self, t: float) -> float:
+        total = 0.0
+        for reclaim in self._pending:
+            node = self._node(reclaim.node_id)
+            if node is not None and node.drain_started_at is None and not node.is_terminated(t):
+                total += reclaim.capacity
+        return total
 
     def _check_recovery(self, t: float, capacity: float) -> None:
         still_pending: list[tuple[float, float]] = []
@@ -146,6 +214,7 @@ class Simulation:
         p95: float,
         served: float,
         plan: Plan,
+        forecast,
     ) -> None:
         record = DecisionRecord(
             schema_version="1.0",
@@ -160,17 +229,22 @@ class Simulation:
                 "p95LatencyMs": round(p95, 2) if math.isfinite(p95) else None,
                 "servedFraction": round(served, 5),
                 "sloP95Ms": self.config.slo.p95_latency_ms,
+                "forecastP90Vcpu": round(
+                    forecast.at(self.config.policy.lead_time_seconds).vcpu_p90, 3
+                ),
+                "reclaimDeficitVcpu": round(self._reclaim_deficit(t), 3),
             },
-            constraints={"status": "EVALUATED_IN_M2"},
+            constraints={"status": "SEE_POLICY"},
             plan={
                 "nodes": {
                     f"{pool.value}/{name}": count
                     for (pool, name), count in plan.nodes.items()
                 },
                 "predictedCostPerHour": round(plan.predicted_cost_per_hour, 4),
+                "solverStatus": plan.solver_status,
             },
-            reason="BASELINE",
-            solver={"name": "rule", "status": "OK"},
+            reason="POLICY_DECISION",
+            solver={"name": "closed-form" if self.policy.name.startswith("P3") else "rule"},
             action={},
         )
         self._records.append(record.to_dict())
@@ -179,29 +253,33 @@ class Simulation:
 
     def run(self) -> SimulationResult:
         dt = self.policy_tick_seconds
-        minutes = len(self.demand)
-        ticks = int(math.ceil(minutes * 60 / dt))
+        ticks = int(math.ceil(len(self.demand) * 60 / dt))
 
         for tick in range(ticks):
             t = tick * dt
             demand = self._demand_at(t)
+            minute = int(t) // 60
+            history = HistoryView(self.demand, minute + 1)
+            self._forecaster.update(history)
+            forecast = self._forecaster.forecast(history)
 
             capacity_before = self._pool.capacity(t)
             events = self._interruption_model.poll(
                 t, dt, self._pool.ready_spot_nodes(t), demand
             )
             for event in events:
-                self._handle_interruption(event, t, capacity_before)
+                self._register_interruption(event, t, capacity_before)
 
             context = DecisionContext(
                 now_seconds=t,
                 demand_vcpu=demand,
-                forecast=None,
+                forecast=forecast,
                 capacity_by_pool=self._pool.capacity_by_pool(t),
                 node_counts=self._pool.counts(t),
                 config=self.config,
                 catalogue=self._catalogue,
                 prices=self._prices,
+                reclaim_deficit_vcpu=self._reclaim_deficit(t),
             )
             plan = self.policy.decide(context)
             actions = self._pool.ensure(
@@ -215,9 +293,9 @@ class Simulation:
             self._drains += len(actions["drained"])
 
             capacity = self._pool.capacity(t)
-            p95 = p95_latency_ms(
-                demand, capacity, self.config.pod_cpu_vcpu, self._workload
-            )
+            self._service_reclaims(t, demand, capacity)
+
+            p95 = p95_latency_ms(demand, capacity, self.config.pod_cpu_vcpu, self._workload)
             served = served_fraction(demand, capacity)
             requests = demand * self._workload.requests_per_vcpu_second * dt
             failed = (1.0 - served) * requests
@@ -238,7 +316,7 @@ class Simulation:
             self._check_recovery(t, capacity)
 
             if self.record_every and tick % self.record_every == 0:
-                self._record(t, tick, demand, capacity, p95, served, plan)
+                self._record(t, tick, demand, capacity, p95, served, plan, forecast)
 
             self._pool.advance(t)
 

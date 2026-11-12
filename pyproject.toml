@@ -16,7 +16,7 @@ authors = [
   { name = "Rabia Ashfaq" },
 ]
 dependencies = [
-  "pulp>=3.2",
+  "pulp>=3.2,<4",
   "PyYAML>=6.0",
   "numpy>=2.0",
   "pandas>=2.2",

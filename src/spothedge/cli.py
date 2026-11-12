@@ -120,7 +120,24 @@ def cmd_trace(args: argparse.Namespace) -> int:
 
 
 def cmd_sim(args: argparse.Namespace) -> int:
-    from spothedge.simulate.runner import run_from_config
+    from spothedge.simulate.runner import run_comparison, run_from_config
+
+    if args.action == "compare":
+        payload = run_comparison(
+            Path(args.config),
+            out_dir=Path(args.out),
+            policies=args.policies.split(","),
+            seeds=list(range(1, args.seeds + 1)),
+            discount=args.discount,
+            interruption_model=args.interruption,
+            q=args.q,
+            notice_seconds=args.notice,
+            days=args.days,
+        )
+        print(json.dumps(payload["aggregate"], indent=2))
+        if payload.get("paired"):
+            print(json.dumps(payload["paired"], indent=2))
+        return 0
 
     if args.action != "run":
         raise SystemExit("unknown sim action")
@@ -184,10 +201,13 @@ def build_parser() -> argparse.ArgumentParser:
     trace.set_defaults(func=cmd_trace)
 
     sim = sub.add_parser("sim", help="discrete-event simulator")
-    sim.add_argument("action", choices=["run"])
+    sim.add_argument("action", choices=["run", "compare"])
     sim.add_argument("--config", default="configs/base.yaml")
     sim.add_argument("--out", default="experiments/runs/smoke")
     sim.add_argument("--policy", default="p0", help="p0 | p1 | p2 | p3")
+    sim.add_argument("--policies", default="p1,p3", help="comma-separated, for compare")
+    sim.add_argument("--seeds", type=int, default=20, help="number of paired seeds, for compare")
+    sim.add_argument("--discount", type=float, default=None, help="spot discount override")
     sim.add_argument(
         "--interruption",
         default="independent",
