@@ -1,0 +1,17 @@
+{
+  "url": "http://127.0.0.1:8080/work?cpu_ms=2&sleep_ms=5",
+  "target_rps": 100.0,
+  "seconds": 30.02,
+  "requests": 3000,
+  "achieved_rps": 99.92,
+  "failures": 0,
+  "failure_rate": 0.0,
+  "failure_kinds": [],
+  "latency_ms": {
+    "mean": 59.89,
+    "p50": 62.57,
+    "p95": 71.84,
+    "p99": 92.45,
+    "max": 169.48
+  }
+}

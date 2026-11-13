@@ -1,0 +1,17 @@
+{
+  "url": "http://localhost:8080/work?cpu_ms=2&sleep_ms=200",
+  "target_rps": 50.0,
+  "seconds": 60.03,
+  "requests": 3000,
+  "achieved_rps": 49.97,
+  "failures": 0,
+  "failure_rate": 0.0,
+  "failure_kinds": [],
+  "latency_ms": {
+    "mean": 218.68,
+    "p50": 218.0,
+    "p95": 233.55,
+    "p99": 266.99,
+    "max": 321.6
+  }
+}

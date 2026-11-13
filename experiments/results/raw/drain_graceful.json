@@ -1,0 +1,21 @@
+{
+  "url": "http://localhost:8080/work",
+  "target_rps": 50.0,
+  "seconds": 90.05,
+  "requests": 4500,
+  "achieved_rps": 49.97,
+  "failures": 0,
+  "failure_rate": 0.0,
+  "failure_kinds": [],
+  "latency_ms": {
+    "mean": 37.08,
+    "p50": 37.08,
+    "p95": 48.63,
+    "p99": 62.47,
+    "max": 196.01
+  },
+  "node": "dataplane-worker2",
+  "action": "graceful drain",
+  "drain_seconds": 7.62,
+  "abrupt": false
+}
