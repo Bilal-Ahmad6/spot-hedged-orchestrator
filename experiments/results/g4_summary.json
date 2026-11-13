@@ -1,0 +1,39 @@
+{
+  "tier": "T3 data plane",
+  "cluster": "kind dataplane (1 control plane + 3 workers, v1.37.0)",
+  "service": "svc-od (2) + svc-spot (2) behind Service checkout, PDB minAvailable=3",
+  "methodology": {
+    "invalid_attempt": "kubectl port-forward pins one TCP stream to one pod; a drain of a different pod cannot affect it, so that run was discarded.",
+    "valid_method": "load generator runs as an in-cluster Job hitting http://checkout/work, so kube-proxy load-balances and endpoint updates are exercised."
+  },
+  "measurements": [
+    {
+      "case": "baseline",
+      "where": "host, port-forward",
+      "target_rps": 100,
+      "requests": 3000,
+      "failures": 0,
+      "p95_ms": 71.25,
+      "p99_ms": 84.91
+    },
+    {
+      "case": "graceful drain of the node hosting a spot pod",
+      "where": "in-cluster Job -> Service",
+      "target_rps": 50,
+      "requests": 3000,
+      "failures": 0,
+      "p95_ms": 24.16,
+      "p99_ms": 43.28,
+      "drain_seconds": 7.6
+    },
+    {
+      "case": "abrupt pod deletion (SIGKILL), 200 rps target, 200 ms requests",
+      "where": "in-cluster Job -> Service",
+      "requests": 4300,
+      "failures": 0,
+      "p95_ms": 213.45,
+      "note": "The harness did not observe loss at this scale: achieved 97.6 rps with ~20 requests in flight across 4 pods, so the killed pod held only a handful of connections and endpoint removal is fast. Reported as a limitation, not as evidence that abrupt loss is free."
+    }
+  ],
+  "conclusion": "G4's zero-lost-request claim is supported for a planned drain with a 30 s notice, PDB and preStop hook. The abrupt case needs either a much higher request rate or per-pod connection pinning to measure; that is a follow-up, not a passed test."
+}

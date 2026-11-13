@@ -21,8 +21,14 @@ import time
 from pathlib import Path
 
 
+KUBECONFIG: str | None = None
+
+
 def kubectl(*args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["kubectl", *args], capture_output=True, text=True)
+    command = ["kubectl"]
+    if KUBECONFIG:
+        command += ["--kubeconfig", KUBECONFIG]
+    return subprocess.run([*command, *args], capture_output=True, text=True)
 
 
 def pick_node(pool: str) -> str:
@@ -42,8 +48,12 @@ def main() -> int:
     parser.add_argument("--rps", type=float, default=50.0)
     parser.add_argument("--url", default="http://localhost:8080/work")
     parser.add_argument("--abrupt", action="store_true")
+    parser.add_argument("--kubeconfig", default=None)
     parser.add_argument("--out", default="experiments/results/drain_test.json")
     args = parser.parse_args()
+
+    global KUBECONFIG
+    KUBECONFIG = args.kubeconfig
 
     node = args.node or pick_node(args.pool)
     out = Path(args.out)

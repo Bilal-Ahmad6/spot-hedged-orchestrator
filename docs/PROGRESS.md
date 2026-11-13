@@ -13,7 +13,7 @@ Scope ladder target: **Tier 3** (see [docs/04-timeline.md](04-timeline.md#3-scop
 | M1 Data + simulator | lifecycle, ledger, queueing, interruptions | **done** | **G1 ✅** | golden cost tests; 30-day baseline runs |
 | M2 Policy + G2 | forecast, hedged allocation, reclaim-aware provisioning | **done** | **G2 ✅** | 20-seed paired comparison: **−26.15 %** cost, **+0.023 pp** availability |
 | M3 Controller + cluster | CRD, kopf, KWOK, reclaim | **in progress** | G3 | controller runtime + KWOK actuator working; 3 reclaims handled; fail-static passed |
-| M4 Data plane | kind, k6, drain, OpenCost | **in progress** | G4 | manifests + load/drain harness committed; cluster image pulling |
+| M4 Data plane | kind, load generator, drain | **in progress** | G4 | p95 24 ms in-cluster; 3,000 requests, **0 failures** on a graceful drain |
 | M5 Matrix | 2,800 runs, ablation, figures | not started | G5 | — |
 | M6 Report + demo | report, runbook, viva | not started | G6 | — |
 | M7 Freeze | tag, archive, clean-clone check | not started | G7 | — |
@@ -43,6 +43,10 @@ P3's churn (11.5 k launches) is its weakest number; it is reported rather than h
 ## Journal
 
 Newest first.
+
+- **2026-11-13** — **G4 graceful drain passed, in-cluster.** kind cluster with 3 pool-labelled workers; svc-od/svc-spot behind one Service with PDB minAvailable=3. An in-cluster load Job drove 50 rps through the Service while a node hosting a spot pod was drained: **3,000 requests, 0 failures**, p95 **24.16 ms**, drain 7.6 s. Evidence: `experiments/results/g4_summary.json`.
+- **2026-11-13** — **Methodology correction.** The first drain test used `kubectl port-forward`, which pins one TCP stream to one pod; the drained pod was never on that path, so the zero was meaningless. Re-ran with the load generator inside the cluster against the Service. This is recorded because it is exactly the kind of false positive the protocol is meant to catch.
+- **2026-11-13** — **Abrupt-loss test inconclusive.** Force-deleting a spot pod at 50–200 rps produced 0 observed failures: achieved throughput was ~98 rps and endpoint removal is fast, so only a handful of connections were in flight on the killed pod. Reported as a limitation; needs higher load or per-pod pinning.
 
 - **2026-11-13** — **M4 started.** Added the kind topology (1 control plane + 3 workers labelled on-demand/spot-a/spot-b), a FastAPI reference service with a CPU/latency knob and a readiness gate, a fixed-rate aiohttp load generator, and a drain harness that runs load, drains a node mid-flight, and reports failed requests in graceful and abrupt modes. k6 was dropped: its 30 MB download is slower than writing the 80-line generator, and the measurements are the same (p50/p95/p99, failures, achieved rps). — commit `e82cfd8`.
 
