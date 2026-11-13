@@ -13,7 +13,7 @@ Scope ladder target: **Tier 3** (see [docs/04-timeline.md](04-timeline.md#3-scop
 | M1 Data + simulator | lifecycle, ledger, queueing, interruptions | **done** | **G1 ✅** | golden cost tests; 30-day baseline runs |
 | M2 Policy + G2 | forecast, hedged allocation, reclaim-aware provisioning | **done** | **G2 ✅** | 20-seed paired comparison: **−26.15 %** cost, **+0.023 pp** availability |
 | M3 Controller + cluster | CRD, kopf, KWOK, reclaim | **in progress** | G3 | controller runtime + KWOK actuator working; 3 reclaims handled; fail-static passed |
-| M4 Data plane | kind, k6, drain, OpenCost | not started | G4 | — |
+| M4 Data plane | kind, k6, drain, OpenCost | **in progress** | G4 | manifests + load/drain harness committed; cluster image pulling |
 | M5 Matrix | 2,800 runs, ablation, figures | not started | G5 | — |
 | M6 Report + demo | report, runbook, viva | not started | G6 | — |
 | M7 Freeze | tag, archive, clean-clone check | not started | G7 | — |
@@ -43,6 +43,8 @@ P3's churn (11.5 k launches) is its weakest number; it is reported rather than h
 ## Journal
 
 Newest first.
+
+- **2026-11-13** — **M4 started.** Added the kind topology (1 control plane + 3 workers labelled on-demand/spot-a/spot-b), a FastAPI reference service with a CPU/latency knob and a readiness gate, a fixed-rate aiohttp load generator, and a drain harness that runs load, drains a node mid-flight, and reports failed requests in graceful and abrupt modes. k6 was dropped: its 30 MB download is slower than writing the 80-line generator, and the measurements are the same (p50/p95/p99, failures, achieved rps). — commit `e82cfd8`.
 
 - **2026-11-12** — **G2 passed.** 20 paired seeds at a 65 % discount: P3 costs **$1,942.69 ± 0.26** versus P1's **$2,630.47**, a **26.15 % ± 0.01 pp** reduction, with availability **99.978 % ± 0.0006 pp** versus P1's 99.745 %. Evidence: `experiments/results/g2_comparison.json`.
 - **2026-11-12** — **M3 controller works against the real API server.** KWOK cluster (v1.36.1 control plane, 16 CPUs), `HedgedService` CRD, `KwokNodeActuator` creating nodes with correct allocatable capacity. Three injected reclaims were each replaced before the drain; logged capacity stayed at 66.6 vCPU. Fail-static: 21 nodes unchanged after 45 s with the controller killed. Evidence: `experiments/results/controller_demo.log`, `controller_decisions.jsonl`, `decision_sample.jsonl`.
